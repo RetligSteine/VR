@@ -5,6 +5,8 @@ let surface;                    // A surface model
 let shProgram;                  // A shader program
 let spaceball;                  // A SimpleRotator object that lets the user rotate the view by mouse.
 
+let stereoCam;                  // Object holding stereo camera and its parameters
+
 let uGranularity = 50;
 let vGranularity = 50;
 
@@ -150,17 +152,13 @@ function draw() {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     
     /* Set the values of the projection transformation */
-    let projection = m4.perspective(Math.PI / 6, 1500/500, 3, 25); 
+    //let projection = m4.perspective(Math.PI / 6, 1500/500, 3, 25); 
     
     /* Get the view matrix from the SimpleRotator object.*/
     let modelView = spaceball.getViewMatrix();
 
     let rotateToPointZero = m4.axisRotation([0.707, 0.707, 0], 0.7);
     let translateToPointZero = m4.translation(0, 0, -10);
-    let matAccum0 = m4.multiply(rotateToPointZero, modelView);
-    let matAccum1 = m4.multiply(translateToPointZero, matAccum0);
-
-    let modelViewProjection = m4.multiply(projection, matAccum1);
 
     //Оновлюємо світло в даний момент часу
     const lightPosition = updateLightPosition();
@@ -168,16 +166,53 @@ function draw() {
 
     //direction vector = (0,0,1), по завданню
     gl.uniform3fv(shProgram.iViewDirection, [0, 0, 1]);
-
     //Параметри освітлення
     gl.uniform3fv(shProgram.iAmbientColor, [0.871, 0.451, 0]);
     gl.uniform3fv(shProgram.iDiffuseColor, [1, 0.714, 0]);
     gl.uniform3fv(shProgram.iSpecularColor, [1.0, 0.0, 0.0]);
     gl.uniform1f(shProgram.iShininess, 10.0);
 
-    gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, modelViewProjection);
 
+
+    // The FIRST PASS (for the left eye)
+    let matrLeftFrustum = stereoCam.calcLeftFrustum();
+    gl.uniformMatrix4fv(shProgram.iProjectionMatrix, false, matrLeftFrustum);
+    let translateLeftEye = m4.translation(stereoCam.eyeSeparation/2, 0, 0);
+
+    let matAccum0 = m4.multiply(rotateToPointZero, modelView );
+    let matAccum1 = m4.multiply(translateLeftEye, matAccum0 );
+    let matAccum2 = m4.multiply(translateToPointZero, matAccum1 );
+
+    /* Multiply the projection matrix times the modelview matrix to give the
+       combined transformation matrix, and send that to the shader program. */
+    //let modelViewProjection = m4.multiply(projection, matAccum1);
+
+    gl.uniformMatrix4fv(shProgram.iModelViewMatrix, false, matAccum2 );
+
+    gl.colorMask(true, false, false, true);
+    gl.uniform4fv(shProgram.iColor, [1,1,1,1] );
     surface.Draw();
+
+    // The SECOND PASS (for the right eye)
+    gl.clear(gl.DEPTH_BUFFER_BIT);
+
+    let matrRightFrustum = stereoCam.calcRightFrustum();
+    gl.uniformMatrix4fv(shProgram.iProjectionMatrix, false, matrRightFrustum);
+
+    let translateRightEye = m4. translation(-stereoCam.eyeSeparation/2, 0, 0);
+
+    matAccum0 = m4.multiply(rotateToPointZero, modelView );
+    matAccum1 = m4.multiply(translateRightEye, matAccum0 );
+    matAccum2 = m4.multiply(translateToPointZero, matAccum1 );
+
+    gl.uniformMatrix4fv(shProgram.iModelViewMatrix, false, matAccum2 );
+
+    gl.colorMask(false, true, true, true);
+    gl.uniform4fv(shProgram.iColor, [1,1,1,1] );
+    surface.Draw();
+
+    gl.colorMask(true, true, true, true);
+
     //Наступний кадр, для збереження крутіння світла
     requestAnimationFrame(draw);
 }
@@ -216,6 +251,16 @@ function initGL() {
     //Створення буфера
     surface = new Model("RICHMOND'S MINIMAL SURFACE");
     surface.BufferData(data.verticesF32, data.normalsF32, data.texCoordsF32, data.indicesU16);
+
+    stereoCam = new StereoCamera(
+        .7,     // decimeters
+        14.0,   // decimeters
+        1.3,    // aspect ratio of canvas
+        0.4,    // radians
+        8.0,    // decimeters
+        20.0    // decimeters
+    );
+
     gl.enable(gl.DEPTH_TEST);
 }
 
