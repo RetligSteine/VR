@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>Lab-1</title>
+
+    <style>
+        body {
+            background-color: #EEEEEE;
+        }
+
+        h1,
+        h2 {
+            text-align: center;
+        }
+
+        #controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 75px;
+        }
+    </style>
+
+    <script src="./Utils/trackball-rotator.js"></script>
+    <script src="./Utils/m4.js"></script>
+    <script src="./shader.gpu"></script>
+    <script src="./Utils/RichmondsMinimalSurface.js"></script>
+    <script src="./main.js"></script>
+    <script src="./Utils/TextureHandler.js"></script>
+
+</head>
+
+<body onload="init()">
+    <h1>Virtual reality, Lab-1</h1>
+    <h1>RICHMOND'S MINIMAL SURFACE</h1>
+    <h2>Sukhenko Bohdan, TR-41mp</h2>
+
+    <div id="canvas-holder">
+        <canvas width="1500" height="500" id="webglcanvas" style="background-color:red"></canvas>
+    </div>
+
+    <div id="controls" style="display: none;">
+        <div>
+            <label for="uGranularity">U Granularity:</label>
+            <input type="range" id="uGranularity" min="3" max="100" value="50" oninput="updateGranularity()">
+            <span id="uGranularityValue">50</span>
+        </div>
+
+        <div>
+            <label for="vGranularity">V Granularity:</label>
+            <input type="range" id="vGranularity" min="5" max="100" value="50" oninput="updateGranularity()">
+            <span id="vGranularityValue">50</span>
+        </div>
+
+        <div>
+            <label for="textureScale">Texture Scale:</label>
+            <input type="range" id="textureScale" min="0.1" max="5.0" value="1.0" step="0.1" oninput="updateTextureScale()">
+            <span id="textureScaleValue">1.0</span>
+        </div>
+
+        <div>
+            <span>Texture U Shift:</label>
+            <span id="textureShiftUValue">0.0</span>
+        </div>
+
+        <div>
+            <span>Texture V Shift:</label>
+            <span id="textureShiftVValue">0.0</span>
+        </div>
+    </div>
+</body>
+
+</html>

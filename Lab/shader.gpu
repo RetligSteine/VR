@@ -1,0 +1,82 @@
+
+
+// Vertex shader
+const vertexShaderSource = `
+attribute vec3 vertex;
+attribute vec3 normal;
+attribute vec2 texCoord;
+
+uniform mat4 ModelViewProjectionMatrix;
+uniform mat4 ModelViewMatrix;
+uniform vec3 lightPosition;
+
+varying vec3 vLightDir;
+varying vec3 vViewDir;
+varying vec2 vTexCoord;
+varying mat3 TBN;
+
+void main() {
+    vec4 vertexPos = ModelViewMatrix * vec4(vertex, 1.0);
+    vLightDir = normalize(lightPosition - vertexPos.xyz);
+    vViewDir = normalize(-vertexPos.xyz);
+
+    //Дотична і бідотична
+    //Це поки-що тільки плейсхолдери, далі розрахунок нормальний
+    vec3 tangent = vec3(1.0, 0.0, 0.0);
+    vec3 bitangent = vec3(0.0, 1.0, 0.0);
+
+    //Ортогоналізація Грама-Шмідта, пріоретизація нормалей
+    tangent = normalize(tangent - dot(tangent, normal) * normal);
+    bitangent = normalize(bitangent - dot(bitangent, normal) * normal - dot(bitangent, tangent) * tangent);
+
+    //Матриця TBN (тангет-бітангент-нормаль)
+    TBN = mat3(tangent, bitangent, normal);
+
+    vTexCoord = texCoord;
+
+    gl_Position = ModelViewProjectionMatrix * vec4(vertex, 1.0);
+}`;
+
+
+// Fragment shader
+const fragmentShaderSource = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+   precision highp float;
+#else
+   precision mediump float;
+#endif
+
+varying vec3 vLightDir;
+varying vec3 vViewDir;
+varying vec2 vTexCoord;
+varying mat3 TBN;
+
+uniform sampler2D diffuseTexture;
+uniform sampler2D specularTexture;
+uniform sampler2D normalTexture;
+
+void main() {
+    //Текстури мої текстурочки
+    vec4 diffuseColor = texture2D(diffuseTexture, vTexCoord);
+    vec4 specularColor = texture2D(specularTexture, vTexCoord);
+
+    //Карта нормалей
+    vec3 normalMap = texture2D(normalTexture, vTexCoord).xyz * 2.0 - 1.0;
+    vec3 normal = normalize(TBN * normalMap);
+
+    //Ambient component
+    vec3 ambient = vec3(0.2);
+
+    //Diffuse component
+    float diffuseIntensity = max(dot(normal, vLightDir), 0.0);
+    vec3 diffuse = diffuseColor.rgb * diffuseIntensity;
+
+    //Specular component
+    vec3 reflectDir = reflect(-vLightDir, normal);
+    float specIntensity = pow(max(dot(reflectDir, vViewDir), 0.0), 32.0);
+    vec3 specular = specularColor.rgb * specIntensity;
+
+    //Кінцевий колір
+    vec3 finalColor = ambient + diffuse + specular;
+    gl_FragColor = vec4(finalColor, 1.0);
+}`;
