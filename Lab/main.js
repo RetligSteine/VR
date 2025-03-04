@@ -5,7 +5,7 @@ let surface;                    // A surface model
 let shProgram;                  // A shader program
 let spaceball;                  // A SimpleRotator object that lets the user rotate the view by mouse.
 let stereoCam;                  // Object holding stereo camera and its parameters
-
+let webcam;                     // Video holding element
 
 //Оновлення значень у реальному часі
 function updateControls() {
@@ -44,11 +44,6 @@ function updateControls() {
         draw();
     });
 }
-
-
-
-
-
 
 // Constructor
 function ShaderProgram(name, program) {
@@ -134,8 +129,6 @@ function draw() {
     gl.colorMask(true, true, true, true);
 }
 
-
-
 /* Initialize the WebGL context. Called from init() */
 function initGL() {
     //Створення шейдерної програми
@@ -150,8 +143,7 @@ function initGL() {
     shProgram.iProjectionMatrix          = gl.getUniformLocation(prog, "ProjectionMatrix");
     shProgram.iColor                     = gl.getUniformLocation(prog, "color");
 
-
-    let data = CreateSurfaceData()
+    let data = CreateSurfaceData();
 
     surface = new Model('RichmondSurface');
     surface.BufferData(data.verticesF32, data.indicesU16);
@@ -168,24 +160,28 @@ function initGL() {
     gl.enable(gl.DEPTH_TEST);
 
     updateControls();
+
+    initWebcam();
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/* Ініціалізація веб-камери */
+function initWebcam() {
+    webcam = document.getElementById("webcam");
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+            webcam.srcObject = stream;
+            webcam.play();
+            webcam.style.position = "absolute";
+            webcam.style.top = "10px";
+            webcam.style.right = "10px";
+            webcam.style.width = "300px";
+            webcam.style.height = "200px";
+            webcam.style.zIndex = "10";
+        })
+        .catch(err => {
+            console.error("Error accessing webcam: ", err);
+        });
+}
 
 /* Creates a program for use in the WebGL context gl, and returns the
  * identifier for that program.  If an error occurs while compiling or
@@ -222,7 +218,6 @@ function createProgram(gl, vShader, fShader) {
     }
     return prog;
 }
-
 
 /**
  * initialization function that will be called when the page has loaded
