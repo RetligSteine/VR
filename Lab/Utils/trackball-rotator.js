@@ -25,7 +25,7 @@
  *
  * @param canvas the HTML canvas element used for WebGL drawing.  The user will rotate the
  *    scene by dragging the mouse on this canvas.  This parameter is required.
- * @param !DELETED! callback if present must be a function, which is called whenever the rotation changes.
+ * @param callback if present must be a function, which is called whenever the rotation changes.
  *    It is typically the function that draws the scene
  * @param viewDistance if present must be a positive number.  Gives the distance of the viewer
  *    from the origin.  If not present, the length is zero, which can be OK for orthographic projection,
@@ -39,7 +39,7 @@
  *    Cannot be a multiple of viewpointDirection.  This is just the initial value for
  *    viewUp; it will be modified by rotation.
  */
-function TrackballRotator(canvas, viewDistance, viewpointDirection, viewUp) {
+function TrackballRotator(canvas, callback, viewDistance, viewpointDirection, viewUp) {
     var unitx = new Array(3);
     var unity = new Array(3);
     var unitz = new Array(3);
@@ -137,6 +137,9 @@ function TrackballRotator(canvas, viewDistance, viewpointDirection, viewUp) {
         applyTransvection(ray1,ray2);
         prevx = x;
         prevy = y;
+        if (callback) {
+            callback();
+        }
     }
     function doMouseUp(evt) {
         if (dragging) {
@@ -177,6 +180,9 @@ function TrackballRotator(canvas, viewDistance, viewpointDirection, viewUp) {
         applyTransvection(ray1,ray2);
         prevx = x;
         prevy = y;
+        if (callback) {
+            callback();
+        }
     }
     function doTouchEnd(evt) {
         doTouchCancel();

@@ -4,191 +4,60 @@ let gl;                         // The webgl context.
 let surface;                    // A surface model
 let shProgram;                  // A shader program
 let spaceball;                  // A SimpleRotator object that lets the user rotate the view by mouse.
-
 let stereoCam;                  // Object holding stereo camera and its parameters
-
-let uGranularity = 50;
-let vGranularity = 50;
-
-let diffuseTexture, specularTexture, normalTexture;
-let textureScale = 1.0;
-
-//Зсув для масштабування, u-v координати точки
-let uOffset = 0.0;
-let vOffset = 0.0;
-
-//Обробка тиків на клавіатурі
-document.addEventListener('keydown', function(event) {
-    const step = 0.01;
-    switch (event.key) {
-        case 's':
-            uOffset -= step;
-            break;
-        case 'w':
-            uOffset += step;
-            break;
-        case 'a':
-            vOffset -= step;
-            break;
-        case 'd':
-            vOffset += step;
-            break;
-        default:
-            return;
-    }
-
-    //Не виходимо за границю
-    if(uOffset > 1)
-        uOffset = 1;
-    if(vOffset > 1)
-        vOffset = 1;
-    if(uOffset < 0)
-        uOffset = 0;
-    if(vOffset < 0)
-        vOffset = 0;
-
-    //Оновлення показу координат
-    textureShiftUValue.textContent = uOffset.toPrecision(2);
-    textureShiftVValue.textContent = vOffset.toPrecision(2);
-
-    //Оновлення поверхні
-    let data = {};
-    CreateSurfaceData(data);
-
-    //Створення буфера
-    surface.BufferData(data.verticesF32, data.normalsF32, data.texCoordsF32, data.indicesU16);
-});
-
-
-
-
-//Завантаження текстур
-function initTextures() {
-    diffuseTexture = LoadTexture('textures/diffuse.jpg');
-    specularTexture = LoadTexture('textures/specular.png');
-    normalTexture = LoadTexture('textures/normal.png');
-}
-
-//Оновлення параметру масштабу текстури
-function updateTextureScale() {
-    textureScale = parseFloat(document.getElementById("textureScale").value);
-    document.getElementById("textureScaleValue").textContent = textureScale;
-
-     //Оновлення поверхні
-    let data = {};
-    CreateSurfaceData(data);
-
-    //Створення буфера
-    surface.BufferData(data.verticesF32, data.normalsF32, data.texCoordsF32, data.indicesU16);
-}
-
-
-//Оновлення даних двох слайдерів,
-//що забезпечують можливість контролювати зернистість поверхні в U та V напрямках
-function updateGranularity() {
-    uGranularity = parseInt(document.getElementById("uGranularity").value);
-    vGranularity = parseInt(document.getElementById("vGranularity").value);
-
-    document.getElementById("uGranularityValue").textContent = uGranularity;
-    document.getElementById("vGranularityValue").textContent = vGranularity;
-
-    //Оновлення поверхні
-    let data = {}
-    CreateSurfaceData(data);
-
-    //Створення буфера
-    surface.BufferData(data.verticesF32, data.normalsF32, data.texCoordsF32, data.indicesU16);
-}
-
-
-
-//Освітлення
-let lightAngle = 0;
-const lightRadius = 10.0;
-function updateLightPosition() {
-    //"Поворот" світла навколо центру
-    lightAngle += 0.005;
-    let lightX = lightRadius * Math.cos(lightAngle);
-    let lightY = lightRadius * Math.sin(lightAngle);
-    return [lightX, lightY, 2];
-}
-
-
 
 // Constructor
 function ShaderProgram(name, program) {
+
     this.name = name;
     this.prog = program;
 
+    // Location of the attribute variable in the shader program.
     this.iAttribVertex = -1;
-    this.iAttribNormal = -1;
-    this.iAttribTexCoords = -1;
+    // Location of the uniform specifying a color for the primitive.
     this.iColor = -1;
+    // Location of the uniform matrix representing the combined transformation.
     this.iModelViewProjectionMatrix = -1;
-    this.iLightPosition = -1;
-    this.iAmbientColor = -1;
-    this.iDiffuseColor = -1;
-    this.iSpecularColor = -1;
-    this.iViewDirection = -1;
-    this.iShininess = -1;
-    this.iDiffuseTexture = -1;
-    this.iSpecularTexture = -1;
-    this.iNormalMap = -1;
 
     this.Use = function() {
         gl.useProgram(this.prog);
     }
 }
 
-
-
-
 /* 
  *  Draws
  */
-function draw() {
+function draw() { 
     //Колір чистого фону
     gl.clearColor(0.447, 0.58, 0.847, 1);
+    gl.clearColor(0.2, 0.15, 0.25, 1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     
-    /* Set the values of the projection transformation */
-    //let projection = m4.perspective(Math.PI / 6, 1500/500, 3, 25); 
+ /* Set the values of the projection transformation */
+    //let projection = m4.perspective(Math.PI/8, 1, 8, 12);
     
     /* Get the view matrix from the SimpleRotator object.*/
     let modelView = spaceball.getViewMatrix();
 
-    let rotateToPointZero = m4.axisRotation([0.707, 0.707, 0], 0.7);
-    let translateToPointZero = m4.translation(0, 0, -10);
-
-    //Оновлюємо світло в даний момент часу
-    const lightPosition = updateLightPosition();
-    gl.uniform3fv(shProgram.iLightPosition, lightPosition);
-
-    //direction vector = (0,0,1), по завданню
-    gl.uniform3fv(shProgram.iViewDirection, [0, 0, 1]);
-    //Параметри освітлення
-    gl.uniform3fv(shProgram.iAmbientColor, [0.871, 0.451, 0]);
-    gl.uniform3fv(shProgram.iDiffuseColor, [1, 0.714, 0]);
-    gl.uniform3fv(shProgram.iSpecularColor, [1.0, 0.0, 0.0]);
-    gl.uniform1f(shProgram.iShininess, 10.0);
-
-
+    let rotateToPointZero = m4.axisRotation([0.707,0.707,0], 0.7);
+    let translateToPointZero = m4.translation(0,0,-10);
 
     // The FIRST PASS (for the left eye)
     let matrLeftFrustum = stereoCam.calcLeftFrustum();
     gl.uniformMatrix4fv(shProgram.iProjectionMatrix, false, matrLeftFrustum);
+
     let translateLeftEye = m4.translation(stereoCam.eyeSeparation/2, 0, 0);
 
     let matAccum0 = m4.multiply(rotateToPointZero, modelView );
     let matAccum1 = m4.multiply(translateLeftEye, matAccum0 );
     let matAccum2 = m4.multiply(translateToPointZero, matAccum1 );
-
+        
     /* Multiply the projection matrix times the modelview matrix to give the
        combined transformation matrix, and send that to the shader program. */
-    //let modelViewProjection = m4.multiply(projection, matAccum1);
+    // let modelViewProjection = m4.multiply(projection, matAccum1 );
 
     gl.uniformMatrix4fv(shProgram.iModelViewMatrix, false, matAccum2 );
-
+    
     gl.colorMask(true, false, false, true);
     gl.uniform4fv(shProgram.iColor, [1,1,1,1] );
     surface.Draw();
@@ -212,16 +81,11 @@ function draw() {
     surface.Draw();
 
     gl.colorMask(true, true, true, true);
-
-    //Наступний кадр, для збереження крутіння світла
-    requestAnimationFrame(draw);
 }
 
 
 /* Initialize the WebGL context. Called from init() */
 function initGL() {
-    initTextures();
-
     //Створення шейдерної програми
     let prog = createProgram( gl, vertexShaderSource, fragmentShaderSource );
 
@@ -230,41 +94,29 @@ function initGL() {
 
     //Зв'язуємо графічний процесор з центральним для всього, що використовуємо
     shProgram.iAttribVertex              = gl.getAttribLocation(prog, "vertex");
-    shProgram.iAttribNormal              = gl.getAttribLocation(prog, "normal");
-    shProgram.iAttribTexCoords           = gl.getAttribLocation(prog, "texCoord");
-    
-    shProgram.iModelViewProjectionMatrix = gl.getUniformLocation(prog, "ModelViewProjectionMatrix");
     shProgram.iModelViewMatrix           = gl.getUniformLocation(prog, "ModelViewMatrix");
-    shProgram.iLightPosition             = gl.getUniformLocation(prog, "lightPosition");
-    shProgram.iAmbientColor              = gl.getUniformLocation(prog, "ambientColor");
-    shProgram.iDiffuseColor              = gl.getUniformLocation(prog, "diffuseColor");
-    shProgram.iSpecularColor             = gl.getUniformLocation(prog, "specularColor");
-    shProgram.iViewDirection             = gl.getUniformLocation(prog, "viewDirection");
-    shProgram.iShininess                 = gl.getUniformLocation(prog, "shininess");
-    shProgram.iDiffuseTexture            = gl.getUniformLocation(prog, "diffuseTexture");
-    shProgram.iSpecularTexture           = gl.getUniformLocation(prog, "specularTexture");
-    
-    //Створюємо дані поверхні
-    let data = {};
-    CreateSurfaceData(data);
+    shProgram.iProjectionMatrix          = gl.getUniformLocation(prog, "ProjectionMatrix");
+    shProgram.iColor                     = gl.getUniformLocation(prog, "color");
 
-    //Створення буфера
-    surface = new Model("RICHMOND'S MINIMAL SURFACE");
-    surface.BufferData(data.verticesF32, data.normalsF32, data.texCoordsF32, data.indicesU16);
+
+    let data = CreateSurfaceData()
+
+    surface = new Model('RichmondSurface');
+    surface.BufferData(data.verticesF32, data.indicesU16);
 
     stereoCam = new StereoCamera(
         .7,     // decimeters
         14.0,   // decimeters
-        1.3,    // aspect ratio of canvas
+        3,    // aspect ratio of canvas
         0.4,    // radians
         8.0,    // decimeters
         20.0    // decimeters
     );
 
     gl.enable(gl.DEPTH_TEST);
+
+
 }
-
-
 
 
 
@@ -350,7 +202,7 @@ function init() {
         return;
     }
 
-    spaceball = new TrackballRotator(canvas, 0);
+    spaceball = new TrackballRotator(canvas, draw, 0);
 
     //Починаємо малювати
     draw();
