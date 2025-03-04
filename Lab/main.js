@@ -29,59 +29,68 @@ function ShaderProgram(name, program) {
  */
 function draw() { 
     //Колір чистого фону
-    gl.clearColor(0.447, 0.58, 0.847, 1);
-    gl.clearColor(0.2, 0.15, 0.25, 1);
+    //Майже чорненький
+    gl.clearColor(0.1, 0.15, 0.25, 1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     
- /* Set the values of the projection transformation */
-    //let projection = m4.perspective(Math.PI/8, 1, 8, 12);
-    
-    /* Get the view matrix from the SimpleRotator object.*/
     let modelView = spaceball.getViewMatrix();
+    let rotateToPointZero = m4.axisRotation([0.707, 0.707, 0], 0.7);
+    let translateToPointZero = m4.translation(0, 0, -10);
 
-    let rotateToPointZero = m4.axisRotation([0.707,0.707,0], 0.7);
-    let translateToPointZero = m4.translation(0,0,-10);
-
-    // The FIRST PASS (for the left eye)
+    //Перший прохід (для лівого ока)
     let matrLeftFrustum = stereoCam.calcLeftFrustum();
     gl.uniformMatrix4fv(shProgram.iProjectionMatrix, false, matrLeftFrustum);
 
-    let translateLeftEye = m4.translation(stereoCam.eyeSeparation/2, 0, 0);
+    let translateLeftEye = m4.translation(stereoCam.eyeSeparation / 2, 0, 0);
 
-    let matAccum0 = m4.multiply(rotateToPointZero, modelView );
-    let matAccum1 = m4.multiply(translateLeftEye, matAccum0 );
-    let matAccum2 = m4.multiply(translateToPointZero, matAccum1 );
-        
-    /* Multiply the projection matrix times the modelview matrix to give the
-       combined transformation matrix, and send that to the shader program. */
-    // let modelViewProjection = m4.multiply(projection, matAccum1 );
-
-    gl.uniformMatrix4fv(shProgram.iModelViewMatrix, false, matAccum2 );
+    let matAccum0 = m4.multiply(rotateToPointZero, modelView);
+    let matAccum1 = m4.multiply(translateLeftEye, matAccum0);
+    let matAccum2 = m4.multiply(translateToPointZero, matAccum1);
     
+    gl.uniformMatrix4fv(shProgram.iModelViewMatrix, false, matAccum2);
+
+    //Налаштування маски кольору для лівого ока (червоний канал)
     gl.colorMask(true, false, false, true);
-    gl.uniform4fv(shProgram.iColor, [1,1,1,1] );
+
+    //Малюємо заповнені полігони (фон)
+    gl.uniform4fv(shProgram.iColor, [1, 0, 0, 1]);
     surface.Draw();
 
-    // The SECOND PASS (for the right eye)
+    //Тепер вайрфрейм каркас поверх полігонів
+    //Майже червоний
+    gl.uniform4fv(shProgram.iColor, [0.5, 0, 0, 1]);
+    surface.DrawWireframe();
+
+    //Другий прохід (для правого ока)
     gl.clear(gl.DEPTH_BUFFER_BIT);
 
     let matrRightFrustum = stereoCam.calcRightFrustum();
     gl.uniformMatrix4fv(shProgram.iProjectionMatrix, false, matrRightFrustum);
 
-    let translateRightEye = m4. translation(-stereoCam.eyeSeparation/2, 0, 0);
+    let translateRightEye = m4.translation(-stereoCam.eyeSeparation / 2, 0, 0);
 
-    matAccum0 = m4.multiply(rotateToPointZero, modelView );
-    matAccum1 = m4.multiply(translateRightEye, matAccum0 );
-    matAccum2 = m4.multiply(translateToPointZero, matAccum1 );
+    matAccum0 = m4.multiply(rotateToPointZero, modelView);
+    matAccum1 = m4.multiply(translateRightEye, matAccum0);
+    matAccum2 = m4.multiply(translateToPointZero, matAccum1);
 
-    gl.uniformMatrix4fv(shProgram.iModelViewMatrix, false, matAccum2 );
+    gl.uniformMatrix4fv(shProgram.iModelViewMatrix, false, matAccum2);
 
+    //Налаштування маски кольору для правого ока (зелений + синій)
     gl.colorMask(false, true, true, true);
-    gl.uniform4fv(shProgram.iColor, [1,1,1,1] );
+
+    // Малюємо заповнені полігони (фон)
+    gl.uniform4fv(shProgram.iColor, [0, 1, 1, 1]);
     surface.Draw();
 
+    //Тепер вайрфрейм каркас поверх полігонів
+    //Майже червоний
+    gl.uniform4fv(shProgram.iColor, [0, 0.5, 0.5, 1]); 
+    surface.DrawWireframe();
+
+    //Повертаємо маску кольору до нормального стану
     gl.colorMask(true, true, true, true);
 }
+
 
 
 /* Initialize the WebGL context. Called from init() */

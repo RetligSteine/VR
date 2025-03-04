@@ -54,7 +54,7 @@ function CreateSurfaceData() {
     let vertices = [];
     let triangles = [];
     let uMin = 0.25, uMax = 1, vMin = 0, vMax = 2 * Math.PI;
-    let uSteps = 50, vSteps = 50; // Кількість кроків для U та V
+    let uSteps = 30, vSteps = 30; // Кількість кроків для U та V
     let uStep = (uMax - uMin) / uSteps;
     let vStep = (vMax - vMin) / vSteps;
 
