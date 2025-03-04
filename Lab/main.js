@@ -6,9 +6,52 @@ let shProgram;                  // A shader program
 let spaceball;                  // A SimpleRotator object that lets the user rotate the view by mouse.
 let stereoCam;                  // Object holding stereo camera and its parameters
 
+
+//Оновлення значень у реальному часі
+function updateControls() {
+    //Отримуємо елементи
+    const eyeSeparation = document.getElementById("eyeSeparation");
+    const fov = document.getElementById("fov");
+    const nearClip = document.getElementById("nearClip");
+    const convergence = document.getElementById("convergence");
+
+    //Додаємо обробники подій для повзунків
+    eyeSeparation.addEventListener("input", () => {
+        stereoCam.eyeSeparation = parseFloat(eyeSeparation.value);
+        console.log("eyeSeparation: ", stereoCam.eyeSeparation)
+        eyeSeparationValue.textContent = eyeSeparation.value;
+        draw();
+    });
+
+    fov.addEventListener("input", () => {
+        stereoCam.FOV = deg2rad(parseFloat(fov.value));
+        console.log("fov: ", stereoCam.FOV, "rads")
+        fovValue.textContent = fov.value;
+        draw();
+    });
+
+    nearClip.addEventListener("input", () => {
+        stereoCam.nearClippingDistance = parseFloat(nearClip.value);
+        console.log("near: ", stereoCam.nearClippingDistance)
+        nearClipValue.textContent = nearClip.value;
+        draw();
+    });
+
+    convergence.addEventListener("input", () => {
+        stereoCam.convergence = parseFloat(convergence.value);
+        console.log("convergence: ", stereoCam.convergence)
+        convergenceValue.textContent = convergence.value;
+        draw();
+    });
+}
+
+
+
+
+
+
 // Constructor
 function ShaderProgram(name, program) {
-
     this.name = name;
     this.prog = program;
 
@@ -114,17 +157,17 @@ function initGL() {
     surface.BufferData(data.verticesF32, data.indicesU16);
 
     stereoCam = new StereoCamera(
-        .7,     // decimeters
-        14.0,   // decimeters
-        3,    // aspect ratio of canvas
-        0.4,    // radians
-        8.0,    // decimeters
-        20.0    // decimeters
+        .7,     // decimeters eyeSeparation
+        14.0,   // decimeters convergence
+        3,      // aspect ratio of canvas
+        0.4,    // radians FOV
+        8.0,    // decimeters nearClippingDistance
+        20.0    // decimeters farClippingDistance
     );
 
     gl.enable(gl.DEPTH_TEST);
 
-
+    updateControls();
 }
 
 

@@ -1,4 +1,5 @@
-function StereoCamera(eyeSeparation,
+function StereoCamera(
+    eyeSeparation,
     convergence,
     aspectRatio,
     FOV,

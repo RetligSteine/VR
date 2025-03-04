@@ -20,7 +20,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 75px;
+            gap: 10px;
         }
     </style>
 
@@ -41,8 +41,18 @@
         <canvas width="1500" height="500" id="webglcanvas" style="background-color:red"></canvas>
     </div>
 
-    <div id="controls" style="display: none;">
-        
+    <div id="controls">
+        <label for="eyeSeparation">Eye separation: <span id="eyeSeparationValue">0.7</span></label><br>
+        <input type="range" id="eyeSeparation" min="0.01" max="2" step="0.01" value="0.7"><br>
+    
+        <label for="fov">Field of View (°): <span id="fovValue">23</span></label><br>
+        <input type="range" id="fov" min="10" max="90" step="1" value="23"><br>
+    
+        <label for="nearClip">Near Clipping distance: <span id="nearClipValue">8</span></label><br>
+        <input type="range" id="nearClip" min="1" max="20" step="0.1" value="8"><br>
+    
+        <label for="convergence">Convergence Distance: <span id="convergenceValue">14</span></label><br>
+        <input type="range" id="convergence" min="1" max="25" step="0.1" value="14"><br>
     </div>
 
 
