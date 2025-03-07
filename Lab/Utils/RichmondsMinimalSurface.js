@@ -23,14 +23,22 @@ function Triangle(v0, v1, v2) {
 function Model(name) {
     this.name = name;
     this.iVertexBuffer = gl.createBuffer();
+    this.iTexCoordBuffer = gl.createBuffer();
     this.iIndexBuffer = gl.createBuffer();
     this.count = 0;
 
-    this.BufferData = function(vertices, indices) {
+    this.BufferData = function(vertices, indices, texCoords) {
         gl.bindBuffer(gl.ARRAY_BUFFER, this.iVertexBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STREAM_DRAW);
         gl.vertexAttribPointer(shProgram.iAttribVertex, 3, gl.FLOAT, false, 0, 0);
         gl.enableVertexAttribArray(shProgram.iAttribVertex);
+
+        if (texCoords) {
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.iTexCoordBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STREAM_DRAW);
+            gl.vertexAttribPointer(shProgram.iAttribTexCoord, 2, gl.FLOAT, false, 0, 0);
+            gl.enableVertexAttribArray(shProgram.iAttribTexCoord);
+        }
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.iIndexBuffer);
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STREAM_DRAW);
@@ -44,13 +52,13 @@ function Model(name) {
 
     this.DrawWireframe = function() {
         for (let p = 0; p < this.count; p += 3)
-            gl.drawElements(gl.LINE_LOOP, 3, gl.UNSIGNED_SHORT, p * 2); // Множимо на 2, бо індекси в байтах
+            gl.drawElements(gl.LINE_LOOP, 3, gl.UNSIGNED_SHORT, p * 2);
     }
 }
 
 
 //Створення точок Мінімальної поверхні Річмонда
-function CreateSurfaceData() {
+function CreateSurfaceData(data) {
     let vertices = [];
     let triangles = [];
     let uMin = 0.25, uMax = 1, vMin = 0, vMax = 2 * Math.PI;
@@ -70,13 +78,13 @@ function CreateSurfaceData() {
         }
     }
 
-    // Створюємо трикутники
+    //Створюємо трикутники
     for (let i = 0; i < uSteps; i++) {
         for (let j = 0; j < vSteps; j++) {
-            let v0ind = i * (vSteps + 1) + j;        // поточна вершина
-            let v1ind = v0ind + 1;                   // наступна по V
-            let v2ind = v0ind + (vSteps + 1);        // наступна по U
-            let v3ind = v2ind + 1;                   // наступна по U і V
+            let v0ind = i * (vSteps + 1) + j;
+            let v1ind = v0ind + 1;
+            let v2ind = v0ind + (vSteps + 1);
+            let v3ind = v2ind + 1;
 
             //Перший трикутник
             let trian1 = new Triangle(v0ind, v2ind, v1ind);
@@ -97,7 +105,6 @@ function CreateSurfaceData() {
     }
 
     //Перетворюємо вершини у Float32Array
-    let data = {};
     data.verticesF32 = new Float32Array(vertices.length * 3);
     for (let i = 0, len = vertices.length; i < len; i++) {
         data.verticesF32[i * 3 + 0] = vertices[i].p[0];
@@ -112,6 +119,4 @@ function CreateSurfaceData() {
         data.indicesU16[i * 3 + 1] = triangles[i].v1;
         data.indicesU16[i * 3 + 2] = triangles[i].v2;
     }
-
-    return data;
 }

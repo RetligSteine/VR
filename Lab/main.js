@@ -2,10 +2,19 @@
 
 let gl;                         // The webgl context.
 let surface;                    // A surface model
+let cameraSurface;              // A surface model for camera
 let shProgram;                  // A shader program
 let spaceball;                  // A SimpleRotator object that lets the user rotate the view by mouse.
 let stereoCam;                  // Object holding stereo camera and its parameters
-let webcam;                     // Video holding element
+
+let surfaceWebCam;              // A substrate for webcam image
+let iTextureWebCam = -1;        // Camera texture
+let video;  
+
+//Дані трикутників і фігури
+let trianglesData = {};
+let data = {};
+
 
 //Оновлення значень у реальному часі
 function updateControls() {
@@ -18,32 +27,29 @@ function updateControls() {
     //Додаємо обробники подій для повзунків
     eyeSeparation.addEventListener("input", () => {
         stereoCam.eyeSeparation = parseFloat(eyeSeparation.value);
-        console.log("eyeSeparation: ", stereoCam.eyeSeparation)
         eyeSeparationValue.textContent = eyeSeparation.value;
-        draw();
     });
 
     fov.addEventListener("input", () => {
         stereoCam.FOV = deg2rad(parseFloat(fov.value));
-        console.log("fov: ", stereoCam.FOV, "rads")
         fovValue.textContent = fov.value;
-        draw();
     });
 
     nearClip.addEventListener("input", () => {
         stereoCam.nearClippingDistance = parseFloat(nearClip.value);
-        console.log("near: ", stereoCam.nearClippingDistance)
         nearClipValue.textContent = nearClip.value;
-        draw();
     });
 
     convergence.addEventListener("input", () => {
         stereoCam.convergence = parseFloat(convergence.value);
-        console.log("convergence: ", stereoCam.convergence)
         convergenceValue.textContent = convergence.value;
-        draw();
     });
 }
+
+
+
+
+
 
 // Constructor
 function ShaderProgram(name, program) {
@@ -54,8 +60,17 @@ function ShaderProgram(name, program) {
     this.iAttribVertex = -1;
     // Location of the uniform specifying a color for the primitive.
     this.iColor = -1;
-    // Location of the uniform matrix representing the combined transformation.
-    this.iModelViewProjectionMatrix = -1;
+    // Location of the uniform matrix representing the model view matrix.
+    this.iModelViewMatrix = -1;
+    // Location of the uniform matrix representing the projection matrix.
+    this.iProjectionMatrix = -1;
+    // Координати текстури
+    this.iAttribTexCoord = -1; 
+    // Текстура
+    this.iTexture = -1;
+    //Чи треба використовувати текстуру
+    this.iUseTexture = -1;
+
 
     this.Use = function() {
         gl.useProgram(this.prog);
@@ -71,63 +86,105 @@ function draw() {
     gl.clearColor(0.1, 0.15, 0.25, 1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     
-    let modelView = spaceball.getViewMatrix();
-    let rotateToPointZero = m4.axisRotation([0.707, 0.707, 0], 0.7);
-    let translateToPointZero = m4.translation(0, 0, -10);
+    //Кольори
+    const colorPolygon = new Float32Array([0.5,0.5,0.5,1]);
+    const colorEdge    = new Float32Array([1,1,1,1]);
 
-    //Перший прохід (для лівого ока)
+    // PATH ZERO: DRAW ZERO PARALLAX WEBCAM
+    gl.activeTexture(gl.TEXTURE0);
+    //Оновлюємо текстуру
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, video); 
+
+    //Матриця ортогональної проекції для поверхні
+    //(left, right, bottom, top, near, far, dst)
+    let matrOrth = m4.orthographic(-1, 1, -1, 1, -1, 1);
+
+    //Відмалювання поверхні веб-камери
+    gl.uniformMatrix4fv(shProgram.iProjectionMatrix, false, matrOrth);
+    //Використовуємо одиничну матрицю для ModelView
+    let identityMatrix = m4.identity();
+    gl.uniformMatrix4fv(shProgram.iModelViewMatrix, false, identityMatrix); 
+
+    //Буферизація даних
+    cameraSurface.BufferData(trianglesData.verticesF32, trianglesData.indicesU16, trianglesData.texCoordsF32);
+    //Увімкнути текстуру
+    gl.uniform1i(shProgram.iUseTexture, 1); 
+
+    //Малюємо cameraSurface як полігони
+    gl.colorMask(true, true, true, true);
+    gl.disable(gl.POLYGON_OFFSET_FILL);
+    cameraSurface.Draw();
+    
+    //Тепер нам не потрібні текстурні координати
+    gl.disableVertexAttribArray(shProgram.iAttribTexCoord);
+    
+    //Вимкнути текстуру для інших об’єктів
+    gl.uniform1i(shProgram.iUseTexture, 0);
+
+
+
+    //Дані для малювання поверхні
+    surface.BufferData(data.verticesF32, data.indicesU16);
+
+    /* Get the view matrix from the SimpleRotator object.*/
+    let modelView = spaceball.getViewMatrix();
+    let rotateToPointZero = m4.axisRotation([0.707,0.707,0], 0.7);
+    let translateToPointZero = m4.translation(0,0,-10);
+
+    // The FIRST PASS (for the left eye)
+    //Очищаємо буфер глибини
+    gl.clear(gl.DEPTH_BUFFER_BIT);
+    //Це ProjectionMatrix для лівого ока
     let matrLeftFrustum = stereoCam.calcLeftFrustum();
     gl.uniformMatrix4fv(shProgram.iProjectionMatrix, false, matrLeftFrustum);
+    //Для лівого ока - мінус, для правого - плюс
+    let translateLeftEye = m4. translation(-stereoCam.eyeSeparation/2, 0, 0);
+    //modelViewMatrix для лівого ока
+    let matAccum0 = m4.multiply(rotateToPointZero, modelView );
+    let matAccum1 = m4.multiply(translateLeftEye, matAccum0 );
+    let modelViewMatrix = m4.multiply(translateToPointZero, matAccum1 );
+    gl.uniformMatrix4fv(shProgram.iModelViewMatrix, false, modelViewMatrix );
 
-    let translateLeftEye = m4.translation(stereoCam.eyeSeparation / 2, 0, 0);
-
-    let matAccum0 = m4.multiply(rotateToPointZero, modelView);
-    let matAccum1 = m4.multiply(translateLeftEye, matAccum0);
-    let matAccum2 = m4.multiply(translateToPointZero, matAccum1);
-    
-    gl.uniformMatrix4fv(shProgram.iModelViewMatrix, false, matAccum2);
-
-    //Налаштування маски кольору для лівого ока (червоний канал)
+    gl.enable(gl.POLYGON_OFFSET_FILL);
+    gl.polygonOffset(1,0);
+    //Для лівого ока - лише червоний компонент     
     gl.colorMask(true, false, false, true);
-
-    //Малюємо заповнені полігони (фон)
-    gl.uniform4fv(shProgram.iColor, [1, 0, 0, 1]);
+    //Колір для полігонів
+    gl.uniform4fv(shProgram.iColor, colorPolygon );
     surface.Draw();
-
-    //Тепер вайрфрейм каркас поверх полігонів
-    //Майже червоний
-    gl.uniform4fv(shProgram.iColor, [0.5, 0, 0, 1]);
+    //Колір вайрфрейму
+    gl.uniform4fv(shProgram.iColor, colorEdge );
     surface.DrawWireframe();
 
-    //Другий прохід (для правого ока)
+    // The SECOND PASS (for the right eye)
+    //Очищаємо буфер глибини
     gl.clear(gl.DEPTH_BUFFER_BIT);
-
+    //Це ProjectionMatrix для правого ока
     let matrRightFrustum = stereoCam.calcRightFrustum();
     gl.uniformMatrix4fv(shProgram.iProjectionMatrix, false, matrRightFrustum);
+    //Для лівого ока - мінус, для правого - плюс
+    let translateRightEye = m4. translation(stereoCam.eyeSeparation/2, 0, 0);
+    //modelViewMatrix для правого ока
+    matAccum0 = m4.multiply(rotateToPointZero, modelView );
+    matAccum1 = m4.multiply(translateRightEye, matAccum0 );
+    modelViewMatrix = m4.multiply(translateToPointZero, matAccum1 );
+    gl.uniformMatrix4fv(shProgram.iModelViewMatrix, false, modelViewMatrix );
 
-    let translateRightEye = m4.translation(-stereoCam.eyeSeparation / 2, 0, 0);
-
-    matAccum0 = m4.multiply(rotateToPointZero, modelView);
-    matAccum1 = m4.multiply(translateRightEye, matAccum0);
-    matAccum2 = m4.multiply(translateToPointZero, matAccum1);
-
-    gl.uniformMatrix4fv(shProgram.iModelViewMatrix, false, matAccum2);
-
-    //Налаштування маски кольору для правого ока (зелений + синій)
+    //Для правого ока - зелений і синій компоненти     
     gl.colorMask(false, true, true, true);
-
-    // Малюємо заповнені полігони (фон)
-    gl.uniform4fv(shProgram.iColor, [0, 1, 1, 1]);
+    //Колір полігонів
+    gl.uniform4fv(shProgram.iColor, colorPolygon );
     surface.Draw();
-
-    //Тепер вайрфрейм каркас поверх полігонів
-    //Майже червоний
-    gl.uniform4fv(shProgram.iColor, [0, 0.5, 0.5, 1]); 
+    //Колір вайрфрейму
+    gl.uniform4fv(shProgram.iColor, colorEdge );
     surface.DrawWireframe();
 
-    //Повертаємо маску кольору до нормального стану
+    //Очищуємо параметри до їхнього стандартного стану
+    gl.disable(gl.POLYGON_OFFSET_FILL);
     gl.colorMask(true, true, true, true);
 }
+
+
 
 /* Initialize the WebGL context. Called from init() */
 function initGL() {
@@ -143,45 +200,65 @@ function initGL() {
     shProgram.iProjectionMatrix          = gl.getUniformLocation(prog, "ProjectionMatrix");
     shProgram.iColor                     = gl.getUniformLocation(prog, "color");
 
-    let data = CreateSurfaceData();
-
-    surface = new Model('RichmondSurface');
-    surface.BufferData(data.verticesF32, data.indicesU16);
+    shProgram.iAttribTexCoord           = gl.getAttribLocation(prog, "texCoord");
+    shProgram.iTexture                  = gl.getUniformLocation(prog, "u_texture");
+    shProgram.iUseTexture               = gl.getUniformLocation(prog, "useTexture");
 
     stereoCam = new StereoCamera(
-        .7,     // decimeters eyeSeparation
+        .2,     // decimeters eyeSeparation
         14.0,   // decimeters convergence
-        3,      // aspect ratio of canvas
-        0.4,    // radians FOV
+        1.6,      // aspect ratio of canvas
+        0.45,    // radians FOV
         8.0,    // decimeters nearClippingDistance
         20.0    // decimeters farClippingDistance
     );
 
+    //Створюємо поверхню яку відобразимо
+    CreateSurfaceData(data)
+    surface = new Model('RichmondSurface');
+
+    //Геометрія для двох трикутників (прямокутника для веб-камери)
+    trianglesData.verticesF32 = new Float32Array([
+        -1.0, -1.0, 0.0,  //Нижній лівий кут
+         1.0, -1.0, 0.0,  //Нижній правий кут
+         1.0,  1.0, 0.0,  //Верхній правий кут
+        -1.0,  1.0, 0.0   //Верхній лівий кут
+    ]);
+    trianglesData.indicesU16 = new Uint16Array([
+        0, 1, 2,  //Перший трикутник
+        0, 2, 3   //Другий трикутник
+    ]);
+    trianglesData.texCoordsF32 = new Float32Array([ // Окремий масив для текстурних координат
+        0.0, 1.0,  // Нижній лівий
+        1.0, 1.0,  // Нижній правий
+        1.0, 0.0,  // Верхній правий
+        0.0, 0.0   // Верхній лівий
+    ]);
+
+    //Створюмєо поверхню для текстури (2 трикутника)
+    cameraSurface = new Model('Surface for camera');
     gl.enable(gl.DEPTH_TEST);
 
+    //Оновлення управління
     updateControls();
-
-    initWebcam();
 }
 
-/* Ініціалізація веб-камери */
-function initWebcam() {
-    webcam = document.getElementById("webcam");
-    navigator.mediaDevices.getUserMedia({ video: true })
-        .then(stream => {
-            webcam.srcObject = stream;
-            webcam.play();
-            webcam.style.position = "absolute";
-            webcam.style.top = "10px";
-            webcam.style.right = "10px";
-            webcam.style.width = "300px";
-            webcam.style.height = "200px";
-            webcam.style.zIndex = "10";
-        })
-        .catch(err => {
-            console.error("Error accessing webcam: ", err);
-        });
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 /* Creates a program for use in the WebGL context gl, and returns the
  * identifier for that program.  If an error occurs while compiling or
@@ -219,6 +296,7 @@ function createProgram(gl, vShader, fShader) {
     return prog;
 }
 
+
 /**
  * initialization function that will be called when the page has loaded
  */
@@ -249,8 +327,29 @@ function init() {
         return;
     }
 
+    video = document.createElement('video');
+    video.autoplay = true;
+
+    //Під'єднання до вебкамери
+    let constraints = {video: true};
+    navigator.mediaDevices.getUserMedia(constraints).then(function (stream) {
+        video.srcObject = stream;
+
+        let track = stream.getVideoTracks()[0];
+        let settings = track.getSettings();
+
+        iTextureWebCam = CreateWebCamTexture(settings.width, settings.height);
+        
+        video.play();
+    }  )
+    .catch(function(err) {
+        console.log(err.name + ": " + err.message);
+    }
+    );
+
+    //Відмальовка кожні 1/20 секунди
+    setInterval(draw, 1/20);
     spaceball = new TrackballRotator(canvas, draw, 0);
 
-    //Починаємо малювати
     draw();
 }
