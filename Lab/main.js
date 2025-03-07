@@ -87,7 +87,7 @@ function draw() {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     
     //Кольори
-    const colorPolygon = new Float32Array([0.5,0.5,0.5,1]);
+    const colorPolygon = new Float32Array([0.25,0.5,0.75,1]);
     const colorEdge    = new Float32Array([1,1,1,1]);
 
     // PATH ZERO: DRAW ZERO PARALLAX WEBCAM
