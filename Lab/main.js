@@ -15,6 +15,14 @@ let video;
 let trianglesData = {};
 let data = {};
 
+//Дані акселерометра
+//Variants 1, 7, 13, [19], 25
+//Implement surface rotation based on hardware accelerometer sensor readings. 
+//As the accelerometer provides a single vector a tilting only orientation is possible.
+let wsurl = "ws://192.168.0.101:8080/sensor/connect?type=android.sensor.accelerometer"
+//WebSocket
+let ws
+let wsdata
 
 //Оновлення значень у реальному часі
 function updateControls() {
@@ -83,6 +91,8 @@ function ShaderProgram(name, program) {
 function draw() { 
     //Колір чистого фону
     //Майже чорненький
+    //console.log(JSON.parse(wsdata).values);
+
     gl.clearColor(0.1, 0.15, 0.25, 1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     
@@ -125,6 +135,12 @@ function draw() {
 
     //Дані для малювання поверхні
     surface.BufferData(data.verticesF32, data.indicesU16);
+
+    //Отримуємо дані акселерометра
+    let accelerometerdata = JSON.parse(wsdata).values;
+    console.log(accelerometerdata)
+
+
 
     /* Get the view matrix from the SimpleRotator object.*/
     let modelView = spaceball.getViewMatrix();
@@ -301,6 +317,16 @@ function createProgram(gl, vShader, fShader) {
  * initialization function that will be called when the page has loaded
  */
 function init() {
+    //WebSocket
+    ws = new WebSocket(wsurl);
+    ws.addEventListener("open", (event) => {
+        console.log("WebSocket working!");
+    });
+    ws.addEventListener("message", (event) => {
+        //console.log("Message from server ", event.data);
+        wsdata = event.data;
+    });
+
     //Шукаємо канвас
     //І контекст вебгл
     let canvas;
