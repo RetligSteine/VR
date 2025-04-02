@@ -22,7 +22,7 @@ let data = {};
 let wsurl = "ws://192.168.0.101:8080/sensor/connect?type=android.sensor.accelerometer"
 //WebSocket
 let ws
-let wsdata
+let accelerometerdata
 
 //Оновлення значень у реальному часі
 function updateControls() {
@@ -136,18 +136,12 @@ function draw() {
     //Дані для малювання поверхні
     surface.BufferData(data.verticesF32, data.indicesU16);
 
-    //Отримуємо дані акселерометра
-    let accelerometerdata = [0,0,0]
-    if(wsdata != undefined)
-        accelerometerdata = JSON.parse(wsdata).values;
+    //Дані з акселерометра
+    const ax = accelerometerdata[0]; //прискорення по осі X
+    const ay = accelerometerdata[1]; //прискорення по осі Y
+    const az = accelerometerdata[2]; //прискорення по осі Z
 
-    //console.log(accelerometerdata)
-//
-    const ax = accelerometerdata[0]; // прискорення по осі X
-    const ay = accelerometerdata[1]; // прискорення по осі Y
-    const az = accelerometerdata[2]; // прискорення по осі Z
-
-    // Нормалізуємо вектор для стабільності
+    //Нормалізуємо дані вектора для стабільності
     const magnitude = Math.sqrt(ax * ax + ay * ay + az * az);
     const nx = ax / magnitude;
     const ny = ay / magnitude;
@@ -163,18 +157,15 @@ function draw() {
     let rotationX = m4.xRotation(roll);
     let rotationY = m4.yRotation(pitch);
     let tiltRotation = m4.multiply(rotationX, rotationY);
-//
 
     /* Get the view matrix from the SimpleRotator object.*/
     let modelView = spaceball.getViewMatrix();
     let rotateToPointZero = m4.axisRotation([0.707,0.707,0], 0.7);
     let translateToPointZero = m4.translation(0,0,-10);
 
-    //
     //Комбінуємо обертання від акселерометра з базовим обертанням
     let baseRotation = m4.multiply(rotateToPointZero, modelView);
     let combinedRotation = m4.multiply(tiltRotation, baseRotation);
-//
 
     // The FIRST PASS (for the left eye)
     //Очищаємо буфер глибини
@@ -352,8 +343,7 @@ function init() {
         console.log("WebSocket working!");
     });
     ws.addEventListener("message", (event) => {
-        //console.log("Message from server ", event.data);
-        wsdata = event.data;
+        accelerometerdata = JSON.parse(event.data).values;
     });
 
     //Шукаємо канвас
