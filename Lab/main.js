@@ -137,15 +137,44 @@ function draw() {
     surface.BufferData(data.verticesF32, data.indicesU16);
 
     //Отримуємо дані акселерометра
-    let accelerometerdata = JSON.parse(wsdata).values;
-    console.log(accelerometerdata)
+    let accelerometerdata = [0,0,0]
+    if(wsdata != undefined)
+        accelerometerdata = JSON.parse(wsdata).values;
 
+    //console.log(accelerometerdata)
+//
+    const ax = accelerometerdata[0]; // прискорення по осі X
+    const ay = accelerometerdata[1]; // прискорення по осі Y
+    const az = accelerometerdata[2]; // прискорення по осі Z
 
+    // Нормалізуємо вектор для стабільності
+    const magnitude = Math.sqrt(ax * ax + ay * ay + az * az);
+    const nx = ax / magnitude;
+    const ny = ay / magnitude;
+    const nz = az / magnitude;
+
+    //Обчислюємо кути нахилу (roll та pitch)
+    //Обертання навколо осі X
+    const roll = Math.atan2(ny, nz);
+    //Обертання навколо осі Y
+    const pitch = Math.atan2(-nx, Math.sqrt(ny * ny + nz * nz));
+
+    //Створюємо матриці обертання
+    let rotationX = m4.xRotation(roll);
+    let rotationY = m4.yRotation(pitch);
+    let tiltRotation = m4.multiply(rotationX, rotationY);
+//
 
     /* Get the view matrix from the SimpleRotator object.*/
     let modelView = spaceball.getViewMatrix();
     let rotateToPointZero = m4.axisRotation([0.707,0.707,0], 0.7);
     let translateToPointZero = m4.translation(0,0,-10);
+
+    //
+    //Комбінуємо обертання від акселерометра з базовим обертанням
+    let baseRotation = m4.multiply(rotateToPointZero, modelView);
+    let combinedRotation = m4.multiply(tiltRotation, baseRotation);
+//
 
     // The FIRST PASS (for the left eye)
     //Очищаємо буфер глибини
@@ -156,7 +185,7 @@ function draw() {
     //Для лівого ока - мінус, для правого - плюс
     let translateLeftEye = m4. translation(-stereoCam.eyeSeparation/2, 0, 0);
     //modelViewMatrix для лівого ока
-    let matAccum0 = m4.multiply(rotateToPointZero, modelView );
+    let matAccum0 = m4.multiply(rotateToPointZero, combinedRotation );
     let matAccum1 = m4.multiply(translateLeftEye, matAccum0 );
     let modelViewMatrix = m4.multiply(translateToPointZero, matAccum1 );
     gl.uniformMatrix4fv(shProgram.iModelViewMatrix, false, modelViewMatrix );
@@ -181,7 +210,7 @@ function draw() {
     //Для лівого ока - мінус, для правого - плюс
     let translateRightEye = m4. translation(stereoCam.eyeSeparation/2, 0, 0);
     //modelViewMatrix для правого ока
-    matAccum0 = m4.multiply(rotateToPointZero, modelView );
+    matAccum0 = m4.multiply(rotateToPointZero, combinedRotation );
     matAccum1 = m4.multiply(translateRightEye, matAccum0 );
     modelViewMatrix = m4.multiply(translateToPointZero, matAccum1 );
     gl.uniformMatrix4fv(shProgram.iModelViewMatrix, false, modelViewMatrix );
