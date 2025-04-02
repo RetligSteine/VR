@@ -24,6 +24,12 @@ let wsurl = "ws://192.168.0.101:8080/sensor/connect?type=android.sensor.accelero
 let ws
 let accelerometerdata
 
+//Змінні для експоненційного згладжування
+let sAx = 0, sAy = 0, sAz = 0;
+//Коефіцієнт згладжування (0 < альфа < 1)
+//Менше === плавніше
+const alpha = 0.15;
+
 //Оновлення значень у реальному часі
 function updateControls() {
     //Отримуємо елементи
@@ -137,15 +143,20 @@ function draw() {
     surface.BufferData(data.verticesF32, data.indicesU16);
 
     //Дані з акселерометра
-    const ax = accelerometerdata[0]; //прискорення по осі X
-    const ay = accelerometerdata[1]; //прискорення по осі Y
-    const az = accelerometerdata[2]; //прискорення по осі Z
+    const ax = accelerometerdata[0]; //прискорення по X
+    const ay = accelerometerdata[1]; //прискорення по Y
+    const az = accelerometerdata[2]; //прискорення по Z
 
-    //Нормалізуємо дані вектора для стабільності
-    const magnitude = Math.sqrt(ax * ax + ay * ay + az * az);
-    const nx = ax / magnitude;
-    const ny = ay / magnitude;
-    const nz = az / magnitude;
+    //А тепер експоненційно згладимо
+    sAx = alpha * ax + (1 - alpha) * sAx;
+    sAy = alpha * ay + (1 - alpha) * sAy;
+    sAz = alpha * az + (1 - alpha) * sAz;
+
+    //Нормалізуємо дані
+    const magnitude = Math.sqrt(sAx * sAx + sAy * sAy + sAz * sAz);
+    const nx = sAx / magnitude;
+    const ny = sAy / magnitude;
+    const nz = sAz / magnitude;
 
     //Обчислюємо кути нахилу (roll та pitch)
     //Обертання навколо осі X
