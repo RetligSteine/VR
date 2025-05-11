@@ -70,8 +70,8 @@ function loadRichmondSurface() {
             }
         });
 
-        object.position.y = 1;
-        object.scale.set(0.5, 0.5, 0.5);
+        object.position.y = 2;
+        object.scale.set(0.25, 0.25, 0.25);
         arWorldRoot.add(object);
         onRenderFcts.push(function () {
             object.rotation.x += 0.01;
