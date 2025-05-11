@@ -12,6 +12,11 @@
 	<!-- ar.js -->
 	<script src="three.js/build/ar.js"></script>
 	<script>THREEx.ArToolkitContext.baseURL = '../'</script>
+
+	<script src='three.js\examples\vendor\three.js\examples\js\libs\OBJLoader.js'></script>
+
+	<!-- RICHMOND'S MINIMAL SURFACE -->
+	<script src="Utils/RichmondsMinimalSurface.js"></script>
 </head>
 
 <body style='margin : 0px; overflow: hidden; font-family: Monospace;'>
@@ -130,10 +135,10 @@
 		//
 		//
 		//
-		var arWorldRoot = smoothedRoot
 
-		// add a torus knot
-		var geometry = new THREE.BoxGeometry(1, 1, 1);
+		var arWorldRoot = smoothedRoot;
+
+		var geometry = new THREE.BoxGeometry(1, 0.1, 1);
 		var material = new THREE.MeshNormalMaterial({
 			transparent: true,
 			opacity: 0.5,
@@ -142,16 +147,13 @@
 		var mesh = new THREE.Mesh(geometry, material);
 		mesh.position.y = geometry.parameters.height / 2
 		arWorldRoot.add(mesh);
+		
 
-		var geometry = new THREE.TorusKnotGeometry(0.3, 0.1, 64, 16);
-		var material = new THREE.MeshNormalMaterial();
-		var mesh = new THREE.Mesh(geometry, material);
-		mesh.position.y = 0.5
-		arWorldRoot.add(mesh);
+		// Integration into the scene
+		loadRichmondSurface();
 
-		onRenderFcts.push(function () {
-			mesh.rotation.x += 0.1
-		})
+
+
 
 		//////////////////////////////////////////////////////////////////////////////////
 		//		render the whole thing on the page

@@ -1,68 +1,10 @@
 //RICHMOND'S MINIMAL SURFACE
-//Basing on the skeleton project add a new js script file containing Model object.
-//Model object has to draw the surface wireframe as two sets of vertices: a set of U polylines and a set of V polylines.
-function deg2rad(angle) {
-    return angle * Math.PI / 180;
-}
-
-function Vertex(p) {
-    this.p = p;
-    this.normal = [];
-    this.triangles = [];
-}
-
-function Triangle(v0, v1, v2) {
-    this.v0 = v0;
-    this.v1 = v1;
-    this.v2 = v2;
-    this.normal = [];
-    this.tangent = [];
-}
-
-//Constructor
-function Model(name) {
-    this.name = name;
-    this.iVertexBuffer = gl.createBuffer();
-    this.iTexCoordBuffer = gl.createBuffer();
-    this.iIndexBuffer = gl.createBuffer();
-    this.count = 0;
-
-    this.BufferData = function(vertices, indices, texCoords) {
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.iVertexBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STREAM_DRAW);
-        gl.vertexAttribPointer(shProgram.iAttribVertex, 3, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(shProgram.iAttribVertex);
-
-        if (texCoords) {
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.iTexCoordBuffer);
-            gl.bufferData(gl.ARRAY_BUFFER, texCoords, gl.STREAM_DRAW);
-            gl.vertexAttribPointer(shProgram.iAttribTexCoord, 2, gl.FLOAT, false, 0, 0);
-            gl.enableVertexAttribArray(shProgram.iAttribTexCoord);
-        }
-
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.iIndexBuffer);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STREAM_DRAW);
-
-        this.count = indices.length;
-    }
-
-    this.Draw = function() {
-        gl.drawElements(gl.TRIANGLES, this.count, gl.UNSIGNED_SHORT, 0);
-    }
-
-    this.DrawWireframe = function() {
-        for (let p = 0; p < this.count; p += 3)
-            gl.drawElements(gl.LINE_LOOP, 3, gl.UNSIGNED_SHORT, p * 2);
-    }
-}
-
-
-//Створення точок Мінімальної поверхні Річмонда
-function CreateSurfaceData(data) {
+//Генерування OBJ-тексту для Мінімальної Поверхні Річмонда
+function generateRichmondSurfaceOBJ() {
     let vertices = [];
-    let triangles = [];
-    let uMin = 0.25, uMax = 1, vMin = 0, vMax = 2 * Math.PI;
-    let uSteps = 5, vSteps = 15;
+    let faces = [];
+    let uMin = 0.25, uMax = 1.25, vMin = 0, vMax = 2 * Math.PI;
+    let uSteps = 25, vSteps = 150;
     let uStep = (uMax - uMin) / uSteps;
     let vStep = (vMax - vMin) / vSteps;
 
@@ -74,7 +16,7 @@ function CreateSurfaceData(data) {
             let x = -Math.cos(v) / (2 * u) - (u * u * u * Math.cos(3 * v)) / 6;
             let y = -Math.sin(v) / (2 * u) - (u * u * u * Math.sin(3 * v)) / 6;
             let z = u * Math.cos(v);
-            vertices.push(new Vertex([x, y, z]));
+            vertices.push([x, y, z]);
         }
     }
 
@@ -86,37 +28,58 @@ function CreateSurfaceData(data) {
             let v2ind = v0ind + (vSteps + 1);
             let v3ind = v2ind + 1;
 
-            //Перший трикутник
-            let trian1 = new Triangle(v0ind, v2ind, v1ind);
-            let trianInd1 = triangles.length;
-            triangles.push(trian1);
-            vertices[v0ind].triangles.push(trianInd1);
-            vertices[v2ind].triangles.push(trianInd1);
-            vertices[v1ind].triangles.push(trianInd1);
-
-            //Другий трикутник
-            let trian2 = new Triangle(v1ind, v2ind, v3ind);
-            let trianInd2 = triangles.length;
-            triangles.push(trian2);
-            vertices[v1ind].triangles.push(trianInd2);
-            vertices[v2ind].triangles.push(trianInd2);
-            vertices[v3ind].triangles.push(trianInd2);
+            //OBJ індекси починаються з 1, тому додаємо +1
+            faces.push([v0ind + 1, v2ind + 1, v1ind + 1]);
+            faces.push([v1ind + 1, v2ind + 1, v3ind + 1]);
         }
     }
 
-    //Перетворюємо вершини у Float32Array
-    data.verticesF32 = new Float32Array(vertices.length * 3);
-    for (let i = 0, len = vertices.length; i < len; i++) {
-        data.verticesF32[i * 3 + 0] = vertices[i].p[0];
-        data.verticesF32[i * 3 + 1] = vertices[i].p[1];
-        data.verticesF32[i * 3 + 2] = vertices[i].p[2];
-    }
+    //OBJ-текст
+    let objContent = '# Richmond Minimal Surface\n';
+    vertices.forEach(v => {
+        objContent += `v ${v[0]} ${v[1]} ${v[2]}\n`;
+    });
+    faces.forEach(f => {
+        objContent += `f ${f[0]} ${f[1]} ${f[2]}\n`;
+    });
 
-    //Перетворюємо індекси трикутників у Uint16Array
-    data.indicesU16 = new Uint16Array(triangles.length * 3);
-    for (let i = 0, len = triangles.length; i < len; i++) {
-        data.indicesU16[i * 3 + 0] = triangles[i].v0;
-        data.indicesU16[i * 3 + 1] = triangles[i].v1;
-        data.indicesU16[i * 3 + 2] = triangles[i].v2;
-    }
+    return objContent;
+}
+
+
+//Функція для завантаження OBJ у сцену
+function loadRichmondSurface() {
+    const objContent = generateRichmondSurfaceOBJ();
+
+    //Blob і URL для OBJ
+    const objBlob = new Blob([objContent], { type: 'text/plain' });
+    const objURL = URL.createObjectURL(objBlob);
+
+    //Завантажуємо
+    const loader = new THREE.OBJLoader();
+    loader.load(objURL, (object) => {
+        const material = new THREE.MeshNormalMaterial({
+            transparent: true,
+            opacity: 0.9,
+            side: THREE.DoubleSide
+        });
+
+        object.traverse(child => {
+            if (child.isMesh) {
+                child.material = material;
+            }
+        });
+
+        object.position.y = 3;
+        object.scale.set(0.7, 0.7, 0.7);
+        arWorldRoot.add(object);
+        onRenderFcts.push(function () {
+            object.rotation.x += 0.01;
+            object.rotation.y += 0.01;
+            object.rotation.z += 0.01;
+        });
+        URL.revokeObjectURL(objURL);
+    }, undefined, (error) => {
+        console.error('Error loading OBJ:', error);
+    });
 }
