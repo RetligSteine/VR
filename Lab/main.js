@@ -19,7 +19,7 @@ let data = {};
 //Variants 1, 7, 13, [19], 25
 //Implement surface rotation based on hardware accelerometer sensor readings. 
 //As the accelerometer provides a single vector a tilting only orientation is possible.
-let wsurl = "ws://192.168.0.101:8080/sensor/connect?type=android.sensor.accelerometer"
+let wsurl = "ws://192.168.0.100:8080/sensor/connect?type=android.sensor.accelerometer"
 //WebSocket
 let ws
 let accelerometerdata

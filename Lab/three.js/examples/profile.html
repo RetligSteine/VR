@@ -1,17 +1,36 @@
 <!DOCTYPE html>
 <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
 <!-- three.js library -->
-<script src='three.js\examples\vendor\three.js\build\three.min.js'></script>
-<script src="three.js\examples\vendor\three.js\examples\js\libs\stats.min.js"></script>
-<!-- ar.js -->
-<script src="three.js/build/ar.js"></script>
+<script src='vendor/three.js/build/three.js'></script>
+<script src="vendor/three.js/examples/js/libs/stats.min.js"></script>
+<!-- jsartookit -->
+<script src="../vendor/jsartoolkit5/build/artoolkit.min.js"></script>
+<script src="../vendor/jsartoolkit5/js/artoolkit.api.js"></script>
+<!-- include threex.artoolkit -->
+<script src="../src/threex/threex-artoolkitsource.js"></script>
+<script src="../src/threex/threex-artoolkitcontext.js"></script>
+<script src="../src/threex/threex-artoolkitprofile.js"></script>
+<script src="../src/threex/threex-arbasecontrols.js"></script>
+<script src="../src/threex/threex-armarkercontrols.js"></script>
 <script>THREEx.ArToolkitContext.baseURL = '../'</script>
 
-<body style='margin : 0px; overflow: hidden; font-family: Monospace;'><div style='position: absolute; top: 10px; width:100%; text-align: center; z-index: 1;'>
-	<a href="https://github.com/jeromeetienne/AR.js/" target="_blank">AR.js</a> - three.js mobile performance
+<body style='margin : 0px; overflow: hidden; font-family: Monospace;'><div style='position: absolute; top: 10px; width:100%; text-align: center;z-index:1';>
+	<a href="https://github.com/jeromeetienne/AR.js/" target="_blank">AR.js</a> - developement playground
 	<br/>
 	Contact me any time at <a href='https://twitter.com/jerome_etienne' target='_blank'>@jerome_etienne</a>
-</div><script>
+</div>
+<div style='position: absolute;bottom: 0;right: 0;background-color: rgba(255,255,255,0.4); padding: 1em; z-index: 1;'>
+	<label title='Select the profile you like'>Profile :
+		<select id='artoolkitProfile'>
+		  <option value="desktop-fast">desktop-fast</option>
+		  <option value="desktop-normal">desktop-normal</option>
+		  <option value="phone-normal">phone-normal</option>
+		  <option value="phone-slow">phone-slow</option>
+		  <option value="dynamic" selected>dynamic</option>
+		</select>
+	</label>
+</div>
+<script>
 	//////////////////////////////////////////////////////////////////////////////////
 	//		Init
 	//////////////////////////////////////////////////////////////////////////////////
@@ -22,7 +41,7 @@
 		alpha: true
 	});
 	renderer.setClearColor(new THREE.Color('lightgrey'), 0)
-	// renderer.setPixelRatio( 1/2 );
+	// renderer.setPixelRatio( 2 );
 	renderer.setSize( window.innerWidth, window.innerHeight );
 	renderer.domElement.style.position = 'absolute'
 	renderer.domElement.style.top = '0px'
@@ -35,6 +54,13 @@
 	// init scene and camera
 	var scene	= new THREE.Scene();
 
+	var ambient = new THREE.AmbientLight( 0x666666 );
+	scene.add( ambient );
+
+	var directionalLight = new THREE.DirectionalLight( 0x887766 );
+	directionalLight.position.set( -1, 1, 1 ).normalize();
+	scene.add( directionalLight );
+
 	//////////////////////////////////////////////////////////////////////////////////
 	//		Initialize a basic camera
 	//////////////////////////////////////////////////////////////////////////////////
@@ -43,22 +69,44 @@
 	var camera = new THREE.Camera();
 	scene.add(camera);
 
-	////////////////////////////////////////////////////////////////////////////////
-	//          handle arToolkitSource
-	////////////////////////////////////////////////////////////////////////////////
+	//////////////////////////////////////////////////////////////////////////////
+	//		handle profile ui
+	//////////////////////////////////////////////////////////////////////////////
 
-	var arToolkitSource = new THREEx.ArToolkitSource({
-		// to read from the webcam
-		sourceType : 'webcam',
+	if( localStorage.getItem('artoolkitPerformanceProfile') !== null ){
+		var domElement = document.querySelector('#artoolkitProfile')
+		domElement.value = localStorage.getItem('artoolkitPerformanceProfile')
+	}
 
-		// to read from an image
-		// sourceType : 'image',
-		// sourceUrl : THREEx.ArToolkitContext.baseURL + '../data/images/img.jpg',
-
-		// to read from a video
-		// sourceType : 'video',
-		// sourceUrl : THREEx.ArToolkitContext.baseURL + '../data/videos/headtracking.mp4',
+	document.querySelector('#artoolkitProfile').addEventListener('change', function(){
+		var domElement = document.querySelector('#artoolkitProfile')
+		localStorage.setItem('artoolkitPerformanceProfile', domElement.value);
+		location.reload();
 	})
+
+	////////////////////////////////////////////////////////////////////////////////
+	//          handle ArToolkitProfile
+	////////////////////////////////////////////////////////////////////////////////
+
+
+	var artoolkitProfile = new THREEx.ArToolkitProfile()
+	artoolkitProfile.sourceWebcam()
+	// artoolkitProfile.sourceVideo(THREEx.ArToolkitContext.baseURL + '../data/videos/headtracking.mp4').kanjiMarker();
+	// artoolkitProfile.sourceImage(THREEx.ArToolkitContext.baseURL + '../data/images/img.jpg').hiroMarker()
+	// artoolkitProfile.performance('desktop-fast')
+
+	if( localStorage.getItem('artoolkitPerformanceProfile') !== null ){
+		var label = localStorage.getItem('artoolkitPerformanceProfile')
+		console.log('Using stored profile', label)
+		artoolkitProfile.performance(label)
+	}
+
+
+	//////////////////////////////////////////////////////////////////////////////
+	//		handle arToolkitSource
+	//////////////////////////////////////////////////////////////////////////////
+
+	var arToolkitSource = new THREEx.ArToolkitSource(artoolkitProfile.sourceParameters)
 
 	arToolkitSource.init(function onReady(){
 		onResize()
@@ -81,13 +129,7 @@
 
 
 	// create atToolkitContext
-	var arToolkitContext = new THREEx.ArToolkitContext({
-		cameraParametersUrl: THREEx.ArToolkitContext.baseURL + 'Lab/data/camera_para.dat',
-		detectionMode: 'mono',
-		maxDetectionRate: 30,
-		canvasWidth: 80*3,
-		canvasHeight: 60*3,
-	})
+	var arToolkitContext = new THREEx.ArToolkitContext(artoolkitProfile.contextParameters)
 	// initialize it
 	arToolkitContext.init(function onCompleted(){
 		// copy projection matrix to camera
@@ -108,31 +150,14 @@
 
 	var markerRoot = new THREE.Group
 	scene.add(markerRoot)
-	var artoolkitMarker = new THREEx.ArMarkerControls(arToolkitContext, markerRoot, {
-		type : 'pattern',
-		patternUrl : THREEx.ArToolkitContext.baseURL + 'Lab/data/patt.hiro'
-		// patternUrl : THREEx.ArToolkitContext.baseURL + '../data/data/patt.kanji'
-	})
+	var artoolkitMarker = new THREEx.ArMarkerControls(arToolkitContext, markerRoot, artoolkitProfile.defaultMarkerParameters)
 
-	// build a smoothedControls
-	var smoothedRoot = new THREE.Group()
-	scene.add(smoothedRoot)
-	var smoothedControls = new THREEx.ArSmoothedControls(smoothedRoot, {
-		lerpPosition: 0.4,
-		lerpQuaternion: 0.3,
-		lerpScale: 1,
-	})
-	onRenderFcts.push(function(delta){
-		smoothedControls.update(markerRoot)
-	})
 	//////////////////////////////////////////////////////////////////////////////////
 	//		add an object in the scene
 	//////////////////////////////////////////////////////////////////////////////////
 
-	var arWorldRoot = smoothedRoot
-
 	// add a torus knot
-	var geometry	= new THREE.BoxGeometry(1,1,1);
+	var geometry	= new THREE.CubeGeometry(1,1,1);
 	var material	= new THREE.MeshNormalMaterial({
 		transparent : true,
 		opacity: 0.5,
@@ -140,13 +165,13 @@
 	});
 	var mesh	= new THREE.Mesh( geometry, material );
 	mesh.position.y	= geometry.parameters.height/2
-	arWorldRoot.add( mesh );
+	markerRoot.add( mesh );
 
 	var geometry	= new THREE.TorusKnotGeometry(0.3,0.1,64,16);
 	var material	= new THREE.MeshNormalMaterial();
 	var mesh	= new THREE.Mesh( geometry, material );
 	mesh.position.y	= 0.5
-	arWorldRoot.add( mesh );
+	markerRoot.add( mesh );
 
 	onRenderFcts.push(function(){
 		mesh.rotation.x += 0.1
