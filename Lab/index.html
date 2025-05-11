@@ -7,14 +7,13 @@
 	<title>Control Task</title>
 
 	<!-- three.js library -->
-	<script src='three.js\examples\vendor\three.js\build\three.min.js'></script>
-	<script src="three.js\examples\vendor\three.js\examples\js\libs\stats.min.js"></script>
+	<script src='three.js/three.min.js'></script>
+	<script src="three.js/stats.min.js"></script>
 	<!-- ar.js -->
-	<script src="three.js/build/ar.js"></script>
+	<script src="three.js/ar.js"></script>
 	<script>THREEx.ArToolkitContext.baseURL = '../'</script>
-
-	<script src='three.js\examples\vendor\three.js\examples\js\libs\OBJLoader.js'></script>
-
+	<!-- OBJLoader.js -->
+	<script src='three.js/OBJLoader.js'></script>
 	<!-- RICHMOND'S MINIMAL SURFACE -->
 	<script src="Utils/RichmondsMinimalSurface.js"></script>
 </head>
@@ -129,27 +128,18 @@
 		//////////////////////////////////////////////////////////////////////////////////
 		//		add an object in the scene
 		//////////////////////////////////////////////////////////////////////////////////
-
-
-		// ТУТ ДОДАВАТИ МОЮ ФІГУРУ!!!!!!!!!
-		//
-		//
-		//
-
 		var arWorldRoot = smoothedRoot;
-
 		var geometry = new THREE.BoxGeometry(1, 0.1, 1);
 		var material = new THREE.MeshNormalMaterial({
 			transparent: true,
-			opacity: 0.5,
+			opacity: 0.25,
 			side: THREE.DoubleSide
 		});
 		var mesh = new THREE.Mesh(geometry, material);
 		mesh.position.y = geometry.parameters.height / 2
 		arWorldRoot.add(mesh);
 		
-
-		// Integration into the scene
+		// МІНІМАЛЬНА ПОВЕРХНЯ РІЧМОНДА
 		loadRichmondSurface();
 
 
